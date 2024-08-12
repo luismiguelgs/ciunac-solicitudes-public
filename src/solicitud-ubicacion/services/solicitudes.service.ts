@@ -75,6 +75,7 @@ export default class SolicitudesService
                 nombres: data.nombres,
                 periodo : data.periodo,
                 estado:'NUEVO',
+                dni:data.dni,
                 pago:+data.pago,
                 idioma:data.idioma,
                 nivel:data.nivel,

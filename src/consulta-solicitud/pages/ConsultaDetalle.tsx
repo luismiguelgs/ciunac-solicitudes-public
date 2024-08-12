@@ -24,7 +24,7 @@ export default function ConsultaDetalle()
     const descargarPDF = async(item:any) => {
         const obj =  {
             solicitud:item.solicitud,
-            creado:item.creado,
+            creado:(item.creado as Date).toLocaleDateString(),
             apellidos:item.apellidos,
             nombres:item.nombres,
             dni:item.dni,
@@ -33,6 +33,8 @@ export default function ConsultaDetalle()
             pago: item.pago,
             voucher: item.numero_voucher
         }
+        console.log(obj);
+        
         const cargoPdfElement = <CargoPdf textos={textos} obj={obj}/>
         const blobPdf = await pdf(cargoPdfElement).toBlob()
         const blobUrl = URL.createObjectURL(blobPdf);

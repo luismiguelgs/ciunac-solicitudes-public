@@ -1,89 +1,61 @@
 import * as React from 'react';
-import {Avatar, Button, TextField, Link, Paper, Box, Grid, Typography, Alert } from '@mui/material';
+import {Avatar, Button, TextField, Paper, Box, Grid, Typography, Alert } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { VERSION } from '../../core/libs/constants'
 import { MyDialog } from '../../core/components/mui';
 import ReCAPTCHA from "react-google-recaptcha";
 import { useMask } from '@react-input/mask';
 import SolicitudesService from '../services/SolicitudesService';
 import { Isolicitud } from '../interfaces/Isolicitud';
 import { useNavigate } from 'react-router-dom';
+import Copyright from '../components/Copyright';
+import * as yup from 'yup'
+import { useFormik } from 'formik';
 
-type Buscar = {
-    dni: string,
-    remember: boolean
-}
-function Copyright(props: any) {
-    return (
-        <Typography variant="body2" color="text.secondary" align="center" {...props}>
-            {'Copyright © '}
-            <Link color="inherit" href="https://ciunac.unac.edu.pe/">
-                CIUNAC
-            </Link>
-            {` ${new Date().getFullYear()}. version: ${VERSION}`}
-        </Typography>
-    );
-}
+const dniRequired = 'DNI es un campo requerido'
+const dniLength = 'DNI debe ser de 8 digitos' 
+
+let validationSchema = yup.object({
+    dni: yup.string().required(dniRequired).trim().min(8, dniLength).max(8, dniLength),
+})
 
 type Props = {
     setAuth: React.Dispatch<React.SetStateAction<boolean>>,
 }
-
 
 export default function HomePage({setAuth}:Props) 
 {
     const navigate = useNavigate()
     const captchaRef = React.useRef<ReCAPTCHA>(null)
     const dniRef = useMask({ mask: '________', replacement: { _: /\d/ } });
-    const [buscar, setBuscar] = React.useState<Buscar>({
-        dni: localStorage.getItem('texto_buscar') || '',
-        remember: Boolean(localStorage.getItem('remember')) || false
-    })
     const [disabled, setDisabled] = React.useState<boolean>(false)
     const [errorMsg, setErrorMsg] = React.useState<string>('') //Error Message
-    const [error, setError] = React.useState<boolean>(false) //Error
     const [open, setOpen] = React.useState<boolean>(false) //Alert
-    const handleChange = (event:React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>{
-        const {name, value} = event.target
-        setBuscar((prevFormData)=>({...prevFormData, [name]:value}))
-    }
-    const handleSubmit = async(event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setDisabled(true)
-        //verificacion de usuario
-        if (validate()) {
-            const result = await SolicitudesService.getItem(buscar.dni) as Isolicitud[];
-            if(result.length > 0){   
-                setAuth(true)  
-                navigate('./detalle',{state:{data:result}})
-            }else{
+
+    const formik = useFormik({
+        initialValues:{
+            dni: '',
+        },
+        validationSchema,
+        onSubmit: async(values)=> {
+            setDisabled(true)
+            if(!captchaRef.current?.getValue()){
+                setErrorMsg('Captcha es un campo requerido')
                 setOpen(true)
                 setDisabled(false)
-                setErrorMsg('No tiene solicitudes resgistradas')
+            }else{
+                const result = await SolicitudesService.getItem(values.dni) as Isolicitud[];
+                if(result.length > 0){   
+                    setAuth(true)  
+                    navigate('./detalle',{state:{data:result}})
+                }else{
+                    setOpen(true)
+                    setDisabled(false)
+                    setErrorMsg('No tiene solicitudes resgistradas')
+                }
             }
         }
-    };
-    const validate = ():boolean => {
-        let dni:boolean
-        let captcha:boolean
-
-        if(buscar.dni === '' || buscar.dni.length <8)
-        {
-            dni = false
-        }else{
-            dni = true
-        }
-        setError(!dni)
-        const captchaValue = captchaRef.current?.getValue()
-
-        if(!captchaValue){
-            captcha = false
-        }else{
-            captcha = true
-        }
-        return dni && captcha
-    }
-
+    })
+    
     return (
         <Grid container component="main" sx={{ 
             height: '100vh', 
@@ -112,23 +84,24 @@ export default function HomePage({setAuth}:Props)
                     <Alert severity="info" aria-haspopup="true">
                         Ingresar su DNI, y verficar si esta listo para recoger su certificado
                     </Alert>
-                    <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+                    <Box component="form" noValidate onSubmit={formik.handleSubmit} >
                         <TextField
                             margin="normal"
                             inputRef={dniRef}
                             required
                             fullWidth
-                            value={buscar.dni}
+                            value={formik.values.dni}
                             label="DNI"
                             name="dni"
-                            error={error}
+                            error={formik.touched.dni && Boolean(formik.errors.dni)}
                             autoComplete="dni"
                             autoFocus
-                            onChange={handleChange}
+                            onChange={formik.handleChange}
+                            helperText={formik.touched.dni && formik.errors.dni}
                         />
                         <ReCAPTCHA sitekey={import.meta.env.VITE_APP_SITE_KEY} ref={captchaRef} />
                         <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={disabled}>Buscar</Button>
-                        <Copyright sx={{ mt: 5 }} />
+                        <Copyright />
                     </Box>
                 </Box>
             </Grid>

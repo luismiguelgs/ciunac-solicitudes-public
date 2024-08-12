@@ -1,5 +1,5 @@
 import { firestore } from '../../core/services/firebase.service';
-import { collection, query, where, getDocs ,serverTimestamp, addDoc, orderBy} from 'firebase/firestore'
+import { collection, query, where, getDocs ,serverTimestamp, addDoc, orderBy, Timestamp} from 'firebase/firestore'
 import { changeDate, obtenerPeriodo } from '../../core/libs/util';
 import { Isolicitud } from '../interfaces/Isolicitud';
 import { Irow } from '../../core/interfaces/Types';
@@ -35,6 +35,7 @@ export default class SolicitudesService
         return querySnapshot.docs.map((doc) => {
             const data = doc.data();
             // Agregamos el campo 'id' al objeto data
+            data.creado = (data.creado as Timestamp).toDate();
             data.id = doc.id;
             return data;
         });
